@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revv — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/cert.css">
+<style>
+  .nav-links{display:flex;gap:16px;font-size:13.5px;font-weight:600}
+  .nav-links a{color:var(--muted)} .nav-links a.active{color:var(--brand)}
+  h1.page{font-size:26px;margin-bottom:4px}
+  .page-sub{color:var(--muted);font-size:14.5px;margin-bottom:22px}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+  .tile .l{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+  .tile .n{font-family:var(--f-display);font-weight:700;font-size:34px;letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin-top:6px}
+  .tile .s{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .tile.accent .n{color:var(--brand)} .tile.good .n{color:var(--mint)} .tile.warn .n{color:var(--amber)}
+
+  .dist{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:22px}
+  .dist .l{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin-bottom:12px}
+  .dist-bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--line)}
+  .dist-bar>span{display:block;height:100%}
+  .dist-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:13px}
+  .dist-legend .it{display:inline-flex;align-items:center;gap:7px;color:var(--muted)}
+  .dist-legend .dot{width:10px;height:10px;border-radius:3px}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .toolbar h2{font-size:18px}
+  .search{position:relative}
+  .search input{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:10px 14px 10px 36px;outline:none;min-width:240px}
+  .search input:focus{border-color:var(--brand)}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+
+  .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:13px 16px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 60%,transparent)}
+  tbody td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr{cursor:pointer;transition:background .12s}
+  tbody tr:hover{background:color-mix(in srgb,var(--brand) 5%,transparent)}
+  tbody tr:last-child td{border-bottom:0}
+  .mono{font-family:var(--f-mono);font-size:12.5px}
+  .soh{font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums}
+  .vpill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .muted{color:var(--muted)} .nowrap{white-space:nowrap}
+  .flag-dot{display:inline-flex;align-items:center;gap:5px;color:var(--amber);font-weight:600;font-size:13px}
+  .spill{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .spill.active{color:var(--mint);background:color-mix(in srgb,var(--mint) 13%,transparent)}
+  .spill.revoked{color:var(--danger);background:color-mix(in srgb,var(--danger) 13%,transparent)}
+  .spill.expired{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+  .rbtn{font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);background:transparent;color:var(--danger);border-radius:8px;padding:5px 10px}
+  .rbtn:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+  .empty{padding:48px 16px;text-align:center;color:var(--muted)}
+  @media (max-width:760px){.tiles{grid-template-columns:repeat(2,1fr)}.table-wrap{overflow-x:auto}table{min-width:720px}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <span class="spark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span>
+        Revv
+      </div>
+      <div class="nav-links">
+        <a href="/">Dongle scan</a>
+        <a href="/manual">Manual entry</a>
+        <a href="/dashboard" class="active">Dashboard</a>
+        <span data-operator></span>
+        <a href="#" data-logout>Sign out</a>
+      </div>
+    </div>
+
+    <h1 class="page">Certificates dashboard</h1>
+    <div class="page-sub">Every battery health certificate Revv has issued, with a live overview.</div>
+
+    <div class="tiles" id="tiles"></div>
+    <div class="dist" id="dist" style="display:none">
+      <div class="l">Verdict distribution</div>
+      <div class="dist-bar" id="dist-bar"></div>
+      <div class="dist-legend" id="dist-legend"></div>
+    </div>
+
+    <div class="toolbar">
+      <h2>All certificates</h2>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <span id="logged" class="muted" style="font-size:12.5px"></span>
+        <a class="btn ghost" href="/api/export.csv" style="font-size:13px;padding:9px 14px">↓ Export CSV</a>
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input id="q" placeholder="Search by ID, model or VIN…" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Certificate</th><th>Vehicle</th><th>SoH</th><th>Verdict</th>
+          <th>Status</th><th>Confidence</th><th>Flags</th><th>Issued</th><th></th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+<script src="/nav.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const colorFor = soh => soh>=80?'var(--mint)':(soh>=70?'var(--amber)':'var(--danger)');
+const VERDICT_COLOR = {Excellent:'var(--mint)',Good:'var(--mint)',Fair:'var(--amber)','Inspect further':'var(--amber)',Poor:'var(--danger)'};
+const vcol = v => VERDICT_COLOR[v] || 'var(--muted)';
+
+function tile(l,n,s,cls){ return `<div class="tile ${cls||''}"><div class="l">${l}</div><div class="n">${n}</div><div class="s">${s||''}</div></div>`; }
+
+function renderStats(st){
+  $("#logged").textContent = (st.logged||0) + " readings logged" + (st.revoked? " · "+st.revoked+" revoked":"");
+  $("#tiles").innerHTML =
+    tile('Total tests', st.total, 'certificates issued', 'accent') +
+    tile('Average SoH', st.total?st.avg_soh+'%':'—', 'across all packs') +
+    tile('Safe to buy', st.safe, st.total?Math.round(st.safe/st.total*100)+'% of tests':'', 'good') +
+    tile('Flagged', st.flagged, 'had warnings', 'warn');
+
+  const vc = st.verdict_counts||{}, total = st.total||0;
+  const dist = $("#dist");
+  if(!total){ dist.style.display='none'; return; }
+  dist.style.display='';
+  const order = ['Excellent','Good','Fair','Inspect further','Poor'];
+  const present = order.filter(v=>vc[v]);
+  $("#dist-bar").innerHTML = present.map(v=>`<span style="width:${vc[v]/total*100}%;background:${vcol(v)}" title="${v}: ${vc[v]}"></span>`).join("");
+  $("#dist-legend").innerHTML = present.map(v=>`<span class="it"><span class="dot" style="background:${vcol(v)}"></span>${v} · ${vc[v]}</span>`).join("");
+}
+
+function statusOf(r){
+  if(r.status==='revoked') return 'revoked';
+  if(r.valid_until && new Date() > new Date(r.valid_until)) return 'expired';
+  return 'active';
+}
+function renderRows(rows){
+  const tb = $("#rows");
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="9" class="empty">No certificates yet. Run a test from <b>Dongle scan</b> or <b>Manual entry</b>.</td></tr>'; return; }
+  tb.innerHTML = rows.map(r=>{
+    const col = colorFor(r.soh), vc = vcol(r.verdict);
+    const issued = r.issued_at.replace('T',' ').replace('+00:00','');
+    const flags = r.flags ? `<span class="flag-dot">⚠ ${r.flags}</span>` : '<span class="muted">—</span>';
+    const st = statusOf(r);
+    const action = st==='revoked' ? '<span class="muted">—</span>'
+      : `<button class="rbtn" onclick="event.stopPropagation();revoke('${esc(r.id)}')">Revoke</button>`;
+    return `<tr onclick="window.open('/c/${encodeURIComponent(r.id)}','_blank')">
+      <td class="mono">${esc(r.id)}</td>
+      <td class="nowrap">${esc(r.model)}</td>
+      <td class="soh" style="color:${col}">${r.soh}%</td>
+      <td><span class="vpill" style="color:${vc};background:color-mix(in srgb,${vc} 14%,transparent)">${esc(r.verdict)}</span></td>
+      <td><span class="spill ${st}">${st[0].toUpperCase()+st.slice(1)}</span></td>
+      <td class="muted">${esc(r.confidence)}</td>
+      <td>${flags}</td>
+      <td class="muted nowrap">${esc(issued)}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function revoke(id){
+  if(!confirm("Revoke certificate "+id+"? This marks it invalid for anyone who opens its link.")) return;
+  const reason = prompt("Reason (optional):") || "";
+  try{
+    const res = await (await fetch("/api/revoke",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,reason})})).json();
+    if(res.ok) load($("#q").value.trim()); else alert("Could not revoke.");
+  }catch(e){ alert("Could not revoke."); }
+}
+
+let timer=null;
+async function load(q=""){
+  const d = await (await fetch("/api/certificates"+(q?("?q="+encodeURIComponent(q)):""))).json();
+  renderStats(d.stats);
+  renderRows(d.certificates);
+}
+$("#q").addEventListener("input", e=>{ clearTimeout(timer); timer=setTimeout(()=>load(e.target.value.trim()),200); });
+load();
+</script>
+</body>
+</html>

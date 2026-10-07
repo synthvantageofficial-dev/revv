@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revv — Operator Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/cert.css">
+<style>
+  .share{display:none;margin-bottom:20px;background:color-mix(in srgb,var(--brand) 9%,transparent);border:1px solid color-mix(in srgb,var(--brand) 30%,transparent);border-radius:14px;padding:14px 16px;align-items:center;gap:12px;flex-wrap:wrap}
+  .share.show{display:flex}
+  .share .lbl{font-size:13.5px;font-weight:600}
+  .share a{font-family:var(--f-mono);font-size:13px;color:var(--brand);word-break:break-all}
+  .share button{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:7px 12px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <span class="spark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span>
+        Revv
+      </div>
+      <div class="nav-links" style="display:flex;gap:16px;font-size:13.5px;font-weight:600">
+        <a href="/" class="active" style="color:var(--brand)">Dongle scan</a>
+        <a href="/manual" style="color:var(--muted)">Manual entry</a>
+        <a href="/dashboard" style="color:var(--muted)">Dashboard</a>
+        <span data-operator style="color:var(--muted)"></span>
+        <a href="#" data-logout style="color:var(--muted)">Sign out</a>
+      </div>
+    </div>
+
+    <div class="card scan-card">
+      <h2>Run a battery test</h2>
+      <div class="sub">Plug the OBD dongle into the car, pick the vehicle, and start. The app reads the pack and scores it — the buyer enters nothing.</div>
+      <div class="scan-row">
+        <select id="vehicle" aria-label="Vehicle to test"></select>
+        <button class="btn" id="start">⚡ Start battery test</button>
+      </div>
+      <div class="console" id="console" aria-live="polite"></div>
+    </div>
+
+    <div class="share" id="share">
+      <span class="lbl">Buyer's shareable certificate:</span>
+      <a id="share-link" href="#" target="_blank" rel="noopener"></a>
+      <button id="copy">Copy link</button>
+    </div>
+
+    <div class="card" id="cert"></div>
+  </div>
+
+<script src="/nav.js"></script>
+<script src="/cert.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const consoleEl = $("#console");
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+async function loadVehicles(){
+  const d = await (await fetch("/api/vehicles")).json();
+  d.vehicles.forEach(v => { const o=document.createElement("option"); o.value=v.id; o.textContent=v.label; $("#vehicle").appendChild(o); });
+}
+function line(html, cls){ const el=document.createElement("div"); el.className="ln"+(cls?" "+cls:""); el.innerHTML=html; consoleEl.appendChild(el); consoleEl.scrollTop=consoleEl.scrollHeight; }
+
+async function streamScan(raw){
+  consoleEl.innerHTML=""; consoleEl.classList.add("show");
+  line('<span class="dim">$ revv connect --obd</span>');
+  await sleep(300); line('Connecting to OBD-II port…');
+  await sleep(450); line('<span class="ok">✓ Link established over Bluetooth</span>');
+  await sleep(250); line('Reading pack telemetry…');
+  const cells = raw.cell_voltages_mv ? raw.cell_voltages_mv.length : 0;
+  const rows = [['VIN',raw.vin||'—'],['Model',raw.model_hint||'—'],['Pack (nominal)',(raw.pack_nominal_kwh||'—')+' kWh'],
+    ['Full charge now', raw.pack_energy_full_kwh!=null ? raw.pack_energy_full_kwh+' kWh':'not readable'],
+    ['Cells sampled', cells+' cells'],['Internal resistance', raw.dc_internal_resistance_mohm!=null?raw.dc_internal_resistance_mohm+' mΩ':'not readable'],
+    ['Odometer',(raw.odometer_km!=null?raw.odometer_km.toLocaleString():'—')+' km'],['Built',raw.manufacture_date||'—']];
+  for(const [k,v] of rows){ await sleep(210); line('  <span class="k">'+k+'</span> : '+v); }
+  await sleep(260); line('<span class="ok">✓ Raw data captured → translating → scoring…</span>');
+}
+
+$("#copy").addEventListener("click", ()=>{
+  const url=$("#share-link").href;
+  navigator.clipboard?.writeText(url).then(()=>{ $("#copy").textContent='Copied!'; setTimeout(()=>$("#copy").textContent='Copy link',1500); }).catch(()=>{});
+});
+
+$("#start").addEventListener("click", async ()=>{
+  const btn=$("#start"), id=$("#vehicle").value;
+  btn.disabled=true; $("#cert").classList.remove("show"); $("#share").classList.remove("show");
+  try{
+    const scan=await (await fetch("/api/scan?id="+encodeURIComponent(id))).json();
+    await streamScan(scan.raw);
+    const res=await (await fetch("/api/score",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({raw:scan.raw})})).json();
+    if(res.error){ line('<span style="color:#F0795E">Error: '+res.error+'</span>'); }
+    else {
+      await sleep(350);
+      const cert=res.certificate;
+      mountCertificate($("#cert"), cert);
+      $("#cert").classList.add("show");
+      const buyerUrl=location.origin+"/c/"+cert.certificate_id;
+      const a=$("#share-link"); a.href=buyerUrl; a.textContent=buyerUrl;
+      $("#share").classList.add("show");
+      $("#cert").scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  }catch(e){ line('<span style="color:#F0795E">Error: '+e.message+'</span>'); }
+  finally{ btn.disabled=false; }
+});
+loadVehicles();
+</script>
+</body>
+</html>

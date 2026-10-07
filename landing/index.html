@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Revv — EV Battery Health Intelligence</title>
+<meta name="description" content="Revv turns an EV's raw battery data into one verified, independent health score — so buying, lending on, or insuring a used electric car is never guesswork. Join the waitlist.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+  /* Design language adapted from the TWAICE visual system (layout, bold geometric type,
+     blue+purple palette with a mint "data" glow, dotted concentric hero pattern, pill buttons) —
+     applied to Revv's own brand and content. Light-first with a full dark theme. */
+  :root{
+    --bg:#FFFFFF;
+    --band:#EEF1FD;          /* lavender section band */
+    --surface:#FFFFFF;
+    --ink:#0A0F1F;           /* near-black navy */
+    --muted:#565E78;
+    --line:#E4E8F4;
+    --brand:#2F54EB;         /* royal blue (primary) */
+    --brand-ink:#1B3BC4;
+    --brand-2:#6D28D9;       /* purple (secondary) */
+    --glow:#19C98A;          /* mint green — battery health / data */
+    --glow-soft:rgba(25,201,138,.18);
+    --danger:#D14327;
+    --radius:20px;
+    --shadow:0 2px 6px rgba(10,15,31,.05), 0 30px 60px -32px rgba(10,15,31,.35);
+    --font-display:"Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-body:"Inter", ui-sans-serif, system-ui, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#080B16;
+      --band:#10152A;
+      --surface:#10152A;
+      --ink:#EEF1FA;
+      --muted:#9AA2BE;
+      --line:#212A46;
+      --brand:#7D97FF;
+      --brand-ink:#A9BAFF;
+      --brand-2:#A78BFA;
+      --glow:#2CE0A0;
+      --glow-soft:rgba(44,224,160,.16);
+      --danger:#F0795E;
+      --shadow:0 2px 6px rgba(0,0,0,.4), 0 36px 70px -34px rgba(0,0,0,.85);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#080B16;--band:#10152A;--surface:#10152A;--ink:#EEF1FA;--muted:#9AA2BE;--line:#212A46;
+    --brand:#7D97FF;--brand-ink:#A9BAFF;--brand-2:#A78BFA;--glow:#2CE0A0;--glow-soft:rgba(44,224,160,.16);
+    --danger:#F0795E;--shadow:0 2px 6px rgba(0,0,0,.4), 0 36px 70px -34px rgba(0,0,0,.85);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .wrap{width:100%;max-width:1120px;margin-inline:auto;padding-inline:22px}
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:var(--font-display);font-weight:700;line-height:1.04;letter-spacing:-.025em;text-wrap:balance;margin:0}
+
+  /* ---- nav ---- */
+  .nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;padding-block:15px;gap:16px}
+  .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:23px;letter-spacing:-.03em}
+  .spark{width:27px;height:27px;display:grid;place-items:center;color:var(--brand)}
+  .nav-cta{font-family:var(--font-body);font-weight:600;font-size:14.5px;color:var(--brand);border:1.5px solid color-mix(in srgb,var(--brand) 45%,transparent);padding:9px 18px;border-radius:999px;transition:background .15s ease}
+  .nav-cta:hover{background:color-mix(in srgb,var(--brand) 10%,transparent)}
+
+  /* ---- hero ---- */
+  .hero{position:relative;padding-block:clamp(44px,8vw,90px);overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1.04fr .96fr;gap:clamp(30px,5vw,60px);align-items:center;position:relative;z-index:2}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--brand-ink);text-transform:uppercase;letter-spacing:.12em;margin-bottom:20px}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--glow);box-shadow:0 0 0 4px var(--glow-soft)}
+  h1{font-size:clamp(36px,6.6vw,66px)}
+  h1 .hl{color:var(--brand)}
+  .hero p.lead{font-size:clamp(16px,2.3vw,19px);color:var(--muted);max-width:34ch;margin:20px 0 0}
+
+  .form{margin-top:30px;max-width:460px}
+  .field{display:flex;gap:8px;background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:7px;box-shadow:var(--shadow)}
+  .field:focus-within{border-color:var(--brand)}
+  .field input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;padding:11px 16px;outline:none}
+  .field input::placeholder{color:var(--muted)}
+  .btn{border:0;cursor:pointer;font-family:var(--font-body);font-weight:600;font-size:15px;color:#fff;background:var(--brand);border-radius:999px;padding:13px 24px;white-space:nowrap;transition:transform .08s ease,filter .15s ease}
+  .btn:hover{filter:brightness(1.07)}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:3px solid var(--brand-2);outline-offset:2px}
+  .form .row2{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+  .form small{color:var(--muted);font-size:13.5px}
+  .form small b{color:var(--ink);font-weight:600}
+  .link-arrow{font-weight:600;font-size:14.5px;color:var(--brand-2);display:inline-flex;align-items:center;gap:6px}
+  .link-arrow:hover{gap:9px}
+  .form-msg{margin-top:14px;font-size:14.5px;font-weight:500;display:none}
+  .form-msg.show{display:block}
+  .form-msg.ok{color:var(--glow)}
+  .form-msg.err{color:var(--danger)}
+
+  /* dotted concentric pattern + glow behind hero visual */
+  .hero-deco{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+  .hero-deco .rings{position:absolute;right:-6%;top:50%;width:min(760px,78vw);aspect-ratio:1;transform:translateY(-50%);
+    background:
+      radial-gradient(circle, var(--ink) 1.3px, transparent 1.6px) 0 0/22px 22px;
+    -webkit-mask:radial-gradient(circle at center, #000 0, #000 32%, transparent 64%);
+            mask:radial-gradient(circle at center, #000 0, #000 32%, transparent 64%);
+    opacity:.10}
+  .hero-deco .halo{position:absolute;right:4%;top:50%;width:min(420px,50vw);aspect-ratio:1;transform:translateY(-50%);background:radial-gradient(circle,var(--glow-soft),transparent 66%);filter:blur(10px)}
+
+  .visual{position:relative}
+  .cert{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px;position:relative;overflow:hidden}
+  .cert::before{content:"";position:absolute;inset:0;background:radial-gradient(130% 90% at 100% 0%,var(--glow-soft),transparent 58%);pointer-events:none}
+  .cert-top{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);position:relative}
+  .verified{display:inline-flex;align-items:center;gap:6px;color:var(--glow);font-weight:600}
+  .gauge{display:grid;place-items:center;margin:8px 0 2px;position:relative}
+  .gauge svg{width:min(270px,72%);height:auto;display:block}
+  .gauge .num{position:absolute;top:58%;transform:translateY(-50%);text-align:center}
+  .gauge .num .big{font-family:var(--font-display);font-weight:700;font-size:48px;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .gauge .num .lbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.11em;margin-top:5px}
+  .cert-rows{display:grid;gap:0;margin-top:10px;position:relative}
+  .cert-rows .row{display:flex;align-items:center;justify-content:space-between;padding:11px 2px;border-top:1px solid var(--line);font-size:14.5px}
+  .cert-rows .row span:first-child{color:var(--muted)}
+  .cert-rows .row span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+  .cert-foot{margin-top:16px;font-size:11.5px;color:var(--muted);position:relative}
+  .badge-chip{position:absolute;left:-16px;top:34%;background:var(--brand);color:#fff;font-family:var(--font-display);font-weight:600;font-size:12.5px;padding:9px 14px;border-radius:12px;box-shadow:var(--shadow);display:flex;align-items:center;gap:7px;z-index:3}
+
+  /* ---- trust strip ---- */
+  .trust{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--band) 55%,transparent)}
+  .trust .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;padding-block:18px;justify-content:center}
+  .trust .lbl{font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:8px 14px;border-radius:999px}
+  .chip svg{color:var(--glow)}
+
+  /* ---- sections ---- */
+  section.block{padding-block:clamp(48px,8vw,88px)}
+  .band{background:var(--band)}
+  .kicker{font-size:12.5px;font-weight:600;text-transform:uppercase;letter-spacing:.11em;color:var(--brand-ink);margin-bottom:14px}
+  h2{font-size:clamp(28px,4.8vw,46px);max-width:17ch}
+  .section-lead{color:var(--muted);max-width:56ch;margin:18px 0 0;font-size:16.5px}
+
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:42px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+  .card .big-stat{font-family:var(--font-display);font-weight:700;font-size:32px;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--brand)}
+  .card .big-stat.danger{color:var(--danger)}
+  .card h3{font-size:18.5px;margin:10px 0 9px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:42px;counter-reset:step}
+  .step{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px;position:relative}
+  .step .idx{counter-increment:step;font-family:var(--font-display);font-weight:700;font-size:15px;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand);border:1px solid color-mix(in srgb,var(--brand) 34%,transparent)}
+  .step .idx::before{content:"0" counter(step)}
+  .step h3{font-size:17.5px;margin:16px 0 8px}
+  .step p{margin:0;color:var(--muted);font-size:14.5px}
+
+  .closing{text-align:center}
+  .closing h2{margin-inline:auto}
+  .closing .section-lead{margin-inline:auto}
+  .closing .form{margin-inline:auto}
+  .closing .field{text-align:left}
+
+  footer{border-top:1px solid var(--line);padding-block:32px;color:var(--muted);font-size:13.5px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:12px 26px;align-items:center;justify-content:space-between}
+  footer .brand{font-size:19px;color:var(--ink)}
+  .mail{font-weight:600;color:var(--ink)}
+
+  @media (max-width:820px){
+    .hero-grid{grid-template-columns:1fr}
+    .visual{order:-1}
+    .hero-deco .rings,.hero-deco .halo{right:-30%;top:18%}
+    .cards,.steps{grid-template-columns:1fr}
+    .badge-chip{left:10px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="wrap">
+      <div class="brand">
+        <span class="spark" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span>
+        Revv
+      </div>
+      <a href="#waitlist" class="nav-cta">Join waitlist</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-deco" aria-hidden="true"><div class="rings"></div><div class="halo"></div></div>
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow"><span class="dot"></span> Independent EV battery intelligence</span>
+        <h1>From guesswork to a <span class="hl">verified battery score.</span></h1>
+        <p class="lead">A used EV is only as good as its battery — and no one tells you the truth. Revv turns raw battery data into one honest health score you can trust before you buy, lend, or insure.</p>
+
+        <form class="form" name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="waitlist">
+          <input type="hidden" name="form-name" value="waitlist">
+          <p hidden><label>Leave this empty: <input name="bot-field"></label></p>
+          <div class="field">
+            <input type="email" name="email" placeholder="you@email.com" autocomplete="email" required aria-label="Email address">
+            <button class="btn" type="submit">Join waitlist</button>
+          </div>
+          <div class="form-msg" role="status" aria-live="polite"></div>
+          <div class="row2">
+            <small>Be first in line at launch. <b>No spam</b> — one email, that's it.</small>
+            <a class="link-arrow" href="#how">See how it works →</a>
+          </div>
+        </form>
+      </div>
+
+      <div class="visual">
+        <aside class="cert" aria-label="Sample Revv battery health certificate">
+          <div class="cert-top">
+            <span>Battery Health Certificate</span>
+            <span class="verified">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 1.8 3 .1 1 2.8 2.3 1.9-.9 2.9.9 2.9-2.3 1.9-1 2.8-3 .1L12 22l-2.4-1.8-3-.1-1-2.8-2.3-1.9.9-2.9-.9-2.9L5.6 3.9l1-2.8 3-.1L12 2Z" fill="currentColor" opacity=".16"/><path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Verified by Revv
+            </span>
+          </div>
+          <div class="gauge">
+            <svg viewBox="0 0 200 120" role="img" aria-label="Battery health score 87 percent">
+              <path d="M18 110 A82 82 0 0 1 182 110" fill="none" stroke="var(--line)" stroke-width="15" stroke-linecap="round"/>
+              <path id="arc" d="M18 110 A82 82 0 0 1 182 110" fill="none" stroke="var(--glow)" stroke-width="15" stroke-linecap="round"/>
+            </svg>
+            <div class="num">
+              <div class="big" id="score">87<span style="font-size:.5em">%</span></div>
+              <div class="lbl">State of Health</div>
+            </div>
+          </div>
+          <div class="cert-rows">
+            <div class="row"><span>Usable range retained</span><span>~ 86%</span></div>
+            <div class="row"><span>Fast-charge capacity</span><span>Healthy</span></div>
+            <div class="row"><span>Est. remaining life</span><span>7+ yrs</span></div>
+            <div class="row"><span>Verdict</span><span>Safe to buy</span></div>
+          </div>
+          <div class="cert-foot">Sample certificate for illustration. Every Revv report is independent of the carmaker.</div>
+        </aside>
+        <div class="badge-chip" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg>
+          3-minute OBD test
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="trust">
+    <div class="wrap">
+      <span class="lbl">Built for India's used-EV wave</span>
+      <span class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Independent of every carmaker</span>
+      <span class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Works across all brands</span>
+      <span class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Built in public</span>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="kicker">The problem</div>
+      <h2>Buying a used EV today is a ₹2–4 lakh gamble.</h2>
+      <p class="section-lead">The battery is the most expensive part of an electric car — and it quietly weakens over time, like an old phone. Buyers, banks and insurers are all flying blind.</p>
+      <div class="cards">
+        <div class="card">
+          <div class="big-stat danger">₹2–4L</div>
+          <h3>The hidden risk</h3>
+          <p>A worn-out pack can cost this much to replace. Buy the wrong used EV and you lose it overnight.</p>
+        </div>
+        <div class="card">
+          <div class="big-stat">60% or 90%?</div>
+          <h3>No way to know</h3>
+          <p>The car's own software often hides the real wear. The number on the dashboard isn't the truth.</p>
+        </div>
+        <div class="card">
+          <div class="big-stat">Zero</div>
+          <h3>No trusted referee</h3>
+          <p>India has no independent, cross-brand battery certificate that buyers and lenders can all rely on.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block band" id="how">
+    <div class="wrap">
+      <div class="kicker">How Revv works</div>
+      <h2>One quick test. One number everyone can trust.</h2>
+      <p class="section-lead">We don't make batteries or sell cars. We're the neutral referee — like a blood test for an EV's battery.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="idx" aria-hidden="true"></div>
+          <h3>Plug in &amp; test</h3>
+          <p>A quick diagnostic reads the raw data straight from the vehicle — no guesswork, no dashboard spin.</p>
+        </div>
+        <div class="step">
+          <div class="idx" aria-hidden="true"></div>
+          <h3>Revv scores it</h3>
+          <p>Our algorithm turns that raw data into one honest State-of-Health score, independent of the carmaker.</p>
+        </div>
+        <div class="step">
+          <div class="idx" aria-hidden="true"></div>
+          <h3>Get your certificate</h3>
+          <p>A shareable certificate buyers, dealers, banks and insurers can all trust before money changes hands.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block closing">
+    <div class="wrap">
+      <div class="kicker">Built in public</div>
+      <h2>We're building Revv in the open. Come along.</h2>
+      <p class="section-lead">Join the waitlist to follow the journey and get early access the day we launch.</p>
+      <form class="form" name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="waitlist-bottom">
+        <input type="hidden" name="form-name" value="waitlist">
+        <p hidden><label>Leave this empty: <input name="bot-field"></label></p>
+        <div class="field">
+          <input type="email" name="email" placeholder="you@email.com" autocomplete="email" required aria-label="Email address">
+          <button class="btn" type="submit">Join waitlist</button>
+        </div>
+        <div class="form-msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="brand">
+        <span class="spark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span>
+        Revv
+      </div>
+      <div>Independent EV battery health certification · India</div>
+      <div>Questions? <span class="mail">hello@revv.example</span></div>
+    </div>
+  </footer>
+
+<script>
+  (function(){
+    var arc=document.getElementById('arc'),scoreEl=document.getElementById('score');
+    if(!arc) return;
+    var len=arc.getTotalLength(),target=87,pct=target/100;
+    var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    arc.style.strokeDasharray=len;
+    if(reduce){arc.style.strokeDashoffset=len*(1-pct);return;}
+    arc.style.strokeDashoffset=len;
+    arc.style.transition='stroke-dashoffset 1.3s cubic-bezier(.22,1,.36,1)';
+    var start=null;
+    function tick(ts){if(!start)start=ts;var t=Math.min((ts-start)/1300,1);var e=1-Math.pow(1-t,3);scoreEl.firstChild.nodeValue=Math.round(e*target);if(t<1)requestAnimationFrame(tick);}
+    requestAnimationFrame(function(){arc.style.strokeDashoffset=len*(1-pct);scoreEl.firstChild.nodeValue='0';requestAnimationFrame(tick);});
+  })();
+
+  function encode(d){return Object.keys(d).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(d[k]);}).join('&');}
+  document.querySelectorAll('form.form').forEach(function(form){
+    var msg=form.querySelector('.form-msg');
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      var email=form.querySelector('input[name="email"]').value.trim();
+      if(!email)return;
+      msg.className='form-msg show';msg.textContent='Adding you…';
+      var body=encode({'form-name':'waitlist','email':email,'bot-field':form.querySelector('input[name="bot-field"]').value});
+      fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(r){if(!r.ok)throw new Error('bad');msg.className='form-msg show ok';msg.textContent='You’re on the list! We’ll email you the moment Revv launches. 🎉';form.querySelector('input[name="email"]').value='';})
+        .catch(function(){msg.className='form-msg show err';msg.textContent='Could not reach the server. This form goes live once the site is deployed — try again then.';});
+    });
+  });
+</script>
+</body>
+</html>

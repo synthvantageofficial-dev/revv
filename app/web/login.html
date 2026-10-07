@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revv — Operator Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/cert.css">
+<style>
+  body{display:grid;place-items:center;min-height:100vh}
+  .login{width:100%;max-width:380px;padding:22px}
+  .login .brand{justify-content:center;font-size:26px;margin-bottom:6px}
+  .login .welcome{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .field input{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;outline:none}
+  .field input:focus{border-color:var(--brand)}
+  .login .btn{width:100%;justify-content:center;margin-top:4px}
+  .err{color:var(--danger);font-size:13.5px;margin-top:12px;text-align:center;display:none}
+  .err.show{display:block}
+  .hint{margin-top:18px;font-size:12px;color:var(--muted);text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+  <form class="card login" id="form">
+    <div class="brand"><span class="spark" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span> Revv</div>
+    <div class="welcome">Operator sign in</div>
+    <div class="field"><label for="u">Username</label><input id="u" autocomplete="username" autofocus required></div>
+    <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required></div>
+    <button class="btn" type="submit" id="submit">Sign in</button>
+    <div class="err" id="err"></div>
+    <div class="hint">Revv staff only. Buyers don't need an account — they just open their certificate link.</div>
+  </form>
+<script>
+const $=s=>document.querySelector(s);
+$("#form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const err=$("#err"); err.classList.remove("show");
+  const btn=$("#submit"); btn.disabled=true; btn.textContent="Signing in…";
+  try{
+    const res=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("#u").value,password:$("#p").value})});
+    const d=await res.json();
+    if(d.ok){ const n=new URLSearchParams(location.search).get("next")||"/"; location.href=n; }
+    else { err.textContent=d.error||"Wrong username or password."; err.classList.add("show"); btn.disabled=false; btn.textContent="Sign in"; }
+  }catch(ex){ err.textContent="Could not sign in. Try again."; err.classList.add("show"); btn.disabled=false; btn.textContent="Sign in"; }
+});
+</script>
+</body>
+</html>

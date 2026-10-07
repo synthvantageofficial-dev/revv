@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revv — Battery Health Certificate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/cert.css">
+<style>
+  .intro{color:var(--muted);font-size:14px;margin:-4px 0 18px}
+  .valid{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--mint);background:color-mix(in srgb,var(--mint) 12%,transparent);border:1px solid color-mix(in srgb,var(--mint) 30%,transparent);padding:6px 12px;border-radius:999px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <span class="spark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span>
+        Revv
+      </div>
+      <span class="valid" id="valid-badge" style="display:none">✓ Genuine Revv certificate</span>
+    </div>
+
+    <div class="card" id="cert">
+      <div class="notice">Loading certificate…</div>
+    </div>
+  </div>
+
+<script src="/cert.js"></script>
+<script>
+function certIdFromUrl(){
+  // supports /c/<id> and ?id=<id>
+  const m = location.pathname.match(/\/c\/([A-Za-z0-9-]+)/);
+  if (m) return m[1];
+  return new URLSearchParams(location.search).get("id") || "";
+}
+
+(async function(){
+  const cert = document.getElementById("cert");
+  const id = certIdFromUrl();
+  if(!id){ cert.innerHTML = '<div class="notice">No certificate ID in the link.</div>'; return; }
+  try{
+    const res = await fetch("/api/certificate?id="+encodeURIComponent(id));
+    if(res.status === 404){
+      cert.innerHTML = '<div class="notice"><b>Certificate not found.</b><br>This ID doesn’t match any certificate Revv has issued. It may be mistyped or not genuine.</div>';
+      return;
+    }
+    const data = await res.json();
+    const c = data.certificate;
+    mountCertificate(cert, c, { showPrint: true });
+    cert.classList.add("show");
+    const badge = document.getElementById("valid-badge");
+    const vu = c.validity ? new Date(c.validity.valid_until) : null;
+    if (c.status === "revoked") {
+      badge.textContent = "⛔ Revoked certificate";
+      badge.style.color = "var(--danger)";
+      badge.style.background = "color-mix(in srgb,var(--danger) 12%,transparent)";
+      badge.style.borderColor = "color-mix(in srgb,var(--danger) 30%,transparent)";
+    } else if (vu && new Date() > vu) {
+      badge.textContent = "⏳ Expired certificate";
+      badge.style.color = "var(--amber)";
+      badge.style.background = "color-mix(in srgb,var(--amber) 13%,transparent)";
+      badge.style.borderColor = "color-mix(in srgb,var(--amber) 30%,transparent)";
+    } else {
+      badge.textContent = "✓ Genuine Revv certificate";
+    }
+    badge.style.display = "";
+  }catch(e){
+    cert.innerHTML = '<div class="notice">Could not load the certificate. Please try again.</div>';
+  }
+})();
+</script>
+</body>
+</html>

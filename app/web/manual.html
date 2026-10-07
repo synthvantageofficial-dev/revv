@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revv — Manual Entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/cert.css">
+<style>
+  .nav-links{display:flex;gap:16px;font-size:13.5px;font-weight:600}
+  .nav-links a{color:var(--muted)} .nav-links a.active{color:var(--brand)}
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 20px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+  .field .hint{font-weight:400;color:var(--muted)}
+  .field input,.field select{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+  .field input:focus,.field select:focus{border-color:var(--brand)}
+  .full{grid-column:1/-1}
+  .group-title{grid-column:1/-1;font-size:12.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-ink);font-weight:600;margin-top:6px}
+  .spec-hint{grid-column:1/-1;font-size:13px;color:var(--mint);min-height:18px}
+  .actions{margin-top:20px;display:flex;gap:10px;align-items:center}
+  .share{display:none;margin:20px 0;background:color-mix(in srgb,var(--brand) 9%,transparent);border:1px solid color-mix(in srgb,var(--brand) 30%,transparent);border-radius:14px;padding:14px 16px;align-items:center;gap:12px;flex-wrap:wrap}
+  .share.show{display:flex}.share .lbl{font-size:13.5px;font-weight:600}
+  .share a{font-family:var(--f-mono);font-size:13px;color:var(--brand);word-break:break-all}
+  .share button{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:7px 12px}
+  .err{color:var(--danger);font-size:13.5px;margin-top:8px;display:none}.err.show{display:block}
+  @media (max-width:600px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <span class="spark" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.2a.8.8 0 0 0 .64 1.28H10l-1 7.5 8.5-11.2a.8.8 0 0 0-.64-1.28H12l1-7.5Z" fill="currentColor"/></svg></span>
+        Revv
+      </div>
+      <div class="nav-links">
+        <a href="/">Dongle scan</a>
+        <a href="/manual" class="active">Manual entry</a>
+        <a href="/dashboard">Dashboard</a>
+        <span data-operator></span>
+        <a href="#" data-logout>Sign out</a>
+      </div>
+    </div>
+
+    <div class="card scan-card">
+      <h2>Manual / assisted entry</h2>
+      <div class="sub">For when there's no dongle, or to fill in readings by hand. Pick the model and enter whatever you have — blanks are fine, Revv just lowers its confidence.</div>
+
+      <form id="form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="model">Vehicle model</label>
+            <select id="model"></select>
+          </div>
+          <div class="field" id="other-wrap" hidden>
+            <label for="other-model">Model name</label>
+            <input id="other-model" placeholder="e.g. BYD Seal">
+          </div>
+          <div class="field" id="other-cap" hidden>
+            <label>Rated pack <span class="hint">(kWh)</span></label>
+            <input id="rated" type="number" step="0.1" placeholder="e.g. 60.5">
+          </div>
+          <div class="field" id="other-chem" hidden>
+            <label>Chemistry</label>
+            <select id="chem"><option value="NMC">NMC</option><option value="LFP">LFP</option></select>
+          </div>
+          <div class="spec-hint" id="spec-hint"></div>
+
+          <div class="field"><label>VIN / Registration</label><input id="vin" placeholder="e.g. DL3CAB1234"></div>
+          <div class="field"><label>Manufacture month</label><input id="made" type="month"></div>
+          <div class="field"><label>Odometer <span class="hint">(km) — required</span></label><input id="odo" type="number" placeholder="e.g. 42000" required></div>
+          <div class="field"><label>Lifetime energy used <span class="hint">(kWh, optional)</span></label><input id="life" type="number" placeholder="leave blank to estimate"></div>
+
+          <div class="group-title">Battery measurements (all optional)</div>
+          <div class="field"><label>Full-charge capacity now <span class="hint">(kWh)</span></label><input id="fullkwh" type="number" step="0.1" placeholder="e.g. 38.4"></div>
+          <div class="field"><label>Cell voltage spread <span class="hint">(mV)</span></label><input id="spread" type="number" placeholder="e.g. 35"></div>
+          <div class="field"><label>Internal resistance <span class="hint">(mΩ)</span></label><input id="res" type="number" placeholder="e.g. 52"></div>
+          <div class="field"><label>Fast-charge share <span class="hint">(%)</span></label><input id="fc" type="number" min="0" max="100" placeholder="e.g. 25"></div>
+          <div class="field"><label>Avg ambient temp <span class="hint">(°C)</span></label><input id="temp" type="number" placeholder="e.g. 30"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" type="submit" id="submit">⚡ Generate certificate</button>
+        </div>
+        <div class="err" id="err"></div>
+      </form>
+    </div>
+
+    <div class="share" id="share">
+      <span class="lbl">Buyer's shareable certificate:</span>
+      <a id="share-link" href="#" target="_blank" rel="noopener"></a>
+      <button id="copy">Copy link</button>
+    </div>
+
+    <div class="card" id="cert"></div>
+  </div>
+
+<script src="/nav.js"></script>
+<script src="/cert.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let SPECS = {};
+
+async function loadModels(){
+  const d = await (await fetch("/api/models")).json();
+  const sel = $("#model");
+  d.models.forEach(m => { SPECS[m.model]=m; const o=document.createElement("option"); o.value=m.model; o.textContent=m.model; sel.appendChild(o); });
+  const other=document.createElement("option"); other.value="__other__"; other.textContent="Other (not listed)"; sel.appendChild(other);
+  updateSpecHint();
+}
+function updateSpecHint(){
+  const v=$("#model").value, isOther=v==="__other__";
+  $("#other-wrap").hidden=!isOther; $("#other-cap").hidden=!isOther; $("#other-chem").hidden=!isOther;
+  const s=SPECS[v];
+  $("#spec-hint").textContent = isOther ? "" : (s ? `✓ Using factory spec: ${s.rated_capacity_kwh} kWh · ${s.chemistry} (auto-filled)` : "");
+}
+$("#model").addEventListener("change", updateSpecHint);
+
+function num(id){ const v=$(id).value.trim(); return v===""?null:Number(v); }
+function str(id){ const v=$(id).value.trim(); return v===""?null:v; }
+
+$("#copy").addEventListener("click", ()=>{ const u=$("#share-link").href; navigator.clipboard?.writeText(u).then(()=>{ $("#copy").textContent='Copied!'; setTimeout(()=>$("#copy").textContent='Copy link',1500); }).catch(()=>{}); });
+
+$("#form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const err=$("#err"); err.classList.remove("show");
+  const odo=num("#odo");
+  if(odo===null){ err.textContent="Odometer is required."; err.classList.add("show"); return; }
+  const isOther=$("#model").value==="__other__";
+
+  const raw={
+    model_hint: isOther ? (str("#other-model")||"Unknown EV") : $("#model").value,
+    vin: str("#vin") || "",
+    manufacture_date: str("#made"),
+    odometer_km: odo,
+    lifetime_energy_kwh: num("#life"),
+    pack_energy_full_kwh: num("#fullkwh"),
+    cell_voltage_spread_mv: num("#spread"),
+    dc_internal_resistance_mohm: num("#res"),
+    dc_fastcharge_ratio: num("#fc")!==null ? num("#fc")/100 : null,
+    ambient_temp_c: num("#temp"),
+  };
+  if(isOther){ raw.pack_nominal_kwh=num("#rated"); raw.chemistry=$("#chem").value; }
+
+  const btn=$("#submit"); btn.disabled=true; $("#cert").classList.remove("show"); $("#share").classList.remove("show");
+  try{
+    const res=await (await fetch("/api/score",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({raw})})).json();
+    if(res.error){ err.textContent="Error: "+res.error; err.classList.add("show"); }
+    else{
+      const cert=res.certificate;
+      mountCertificate($("#cert"), cert); $("#cert").classList.add("show");
+      const url=location.origin+"/c/"+cert.certificate_id;
+      const a=$("#share-link"); a.href=url; a.textContent=url; $("#share").classList.add("show");
+      $("#cert").scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  }catch(ex){ err.textContent="Error: "+ex.message; err.classList.add("show"); }
+  finally{ btn.disabled=false; }
+});
+loadModels();
+</script>
+</body>
+</html>

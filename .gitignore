@@ -1,0 +1,8 @@
+# Revv — do not commit runtime data or secrets
+app/data/
+__pycache__/
+*.pyc
+.netlify/
+.DS_Store
+*.mp4
+*.mov
