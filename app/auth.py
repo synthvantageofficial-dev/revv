@@ -59,13 +59,28 @@ def _hash(password: str, salt: bytes) -> str:
     return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _PBKDF_ROUNDS).hex()
 
 
-def create_operator(username: str, name: str, password: str) -> None:
+def user_exists(username: str) -> bool:
+    return username.strip().lower() in _load_users()
+
+
+def find_by_email(email: str) -> str | None:
+    email_lc = email.strip().lower()
+    for uname, data in _load_users().items():
+        if data.get("email", "").lower() == email_lc or uname == email_lc:
+            return uname
+    return None
+
+
+def create_operator(username: str, name: str, password: str, email: str = "") -> None:
     username = username.strip().lower()
     with _lock:
         users = _load_users()
+        if username in users:
+            raise ValueError("Username already taken")
         salt = secrets.token_bytes(16)
         users[username] = {
             "name": name,
+            "email": email.strip().lower(),
             "salt": salt.hex(),
             "pwd_hash": _hash(password, salt),
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -73,15 +88,48 @@ def create_operator(username: str, name: str, password: str) -> None:
         _save_users(users)
 
 
-def verify_credentials(username: str, password: str) -> bool:
-    username = (username or "").strip().lower()
+def create_from_google(email: str, name: str) -> str:
+    email_lc = email.strip().lower()
+    existing = find_by_email(email_lc)
+    if existing:
+        return existing
+    username = email_lc.split("@")[0]
+    base = username
+    counter = 1
+    with _lock:
+        users = _load_users()
+        while username in users:
+            username = f"{base}{counter}"
+            counter += 1
+        salt = secrets.token_bytes(16)
+        users[username] = {
+            "name": name or email_lc.split("@")[0],
+            "email": email_lc,
+            "salt": salt.hex(),
+            "pwd_hash": _hash(secrets.token_urlsafe(32), salt),
+            "auth_provider": "google",
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        _save_users(users)
+    return username
+
+
+def verify_credentials(username_or_email: str, password: str) -> str | None:
+    """Return the username if credentials are valid, else None."""
+    key = (username_or_email or "").strip().lower()
     users = _load_users()
-    u = users.get(username)
+    username = key
+    u = users.get(key)
     if not u:
-        return False
+        found = find_by_email(key)
+        if found:
+            username = found
+            u = users.get(found)
+    if not u:
+        return None
     expected = u["pwd_hash"]
     actual = _hash(password, bytes.fromhex(u["salt"]))
-    return hmac.compare_digest(expected, actual)
+    return username if hmac.compare_digest(expected, actual) else None
 
 
 def operator_name(username: str) -> str:

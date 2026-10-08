@@ -22,12 +22,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections import Counter
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.request import urlopen, Request
 
 APP_DIR = Path(__file__).resolve().parent
 WEB_DIR = APP_DIR / "web"
@@ -51,6 +53,9 @@ PORT = int(os.environ.get("PORT", 8130))
 BASE_URL = os.environ.get("REVV_BASE_URL", f"http://localhost:{PORT}")
 SESSION_COOKIE = "revv_session"
 
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
 _STATIC = {
     "/cert.css": ("cert.css", "text/css; charset=utf-8"),
     "/cert.js": ("cert.js", "application/javascript; charset=utf-8"),
@@ -59,8 +64,10 @@ _STATIC = {
 
 # Routes anyone can reach without signing in.
 # (Buyers open their certificate; assets and the login flow must load.)
-_PUBLIC_GET = {"/login", "/login.html", "/cert.css", "/cert.js", "/api/certificate"}
-_PUBLIC_POST = {"/api/login", "/api/logout"}
+_PUBLIC_GET = {"/login", "/login.html", "/signup", "/signup.html",
+               "/cert.css", "/cert.js", "/api/certificate",
+               "/auth/google", "/auth/google/callback"}
+_PUBLIC_POST = {"/api/login", "/api/logout", "/api/signup"}
 
 _NOT_FOUND_HTML = (
     "<!doctype html><meta charset=utf-8><title>Revv — Not found</title>"
@@ -181,6 +188,54 @@ class Handler(BaseHTTPRequestHandler):
         if route in ("/login", "/login.html"):
             return self._file("login.html", "text/html; charset=utf-8")
 
+        if route in ("/signup", "/signup.html"):
+            return self._file("signup.html", "text/html; charset=utf-8")
+
+        if route == "/auth/google":
+            if not GOOGLE_CLIENT_ID:
+                return self._send(500, b"Google OAuth not configured", "text/plain")
+            params = urlencode({
+                "client_id": GOOGLE_CLIENT_ID,
+                "redirect_uri": f"{BASE_URL}/auth/google/callback",
+                "response_type": "code",
+                "scope": "openid email profile",
+                "access_type": "offline",
+                "prompt": "select_account",
+            })
+            return self._redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+        if route == "/auth/google/callback":
+            query = parse_qs(urlparse(self.path).query)
+            code = (query.get("code") or [""])[0]
+            if not code:
+                return self._redirect("/login")
+            try:
+                token_data = urlencode({
+                    "code": code,
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": f"{BASE_URL}/auth/google/callback",
+                    "grant_type": "authorization_code",
+                }).encode()
+                req = Request("https://oauth2.googleapis.com/token",
+                              data=token_data, method="POST",
+                              headers={"Content-Type": "application/x-www-form-urlencoded"})
+                with urlopen(req, timeout=10) as resp:
+                    tokens = json.loads(resp.read())
+                id_token = tokens.get("id_token", "")
+                payload_b64 = id_token.split(".")[1]
+                payload_b64 += "=" * (-len(payload_b64) % 4)
+                from base64 import urlsafe_b64decode
+                profile = json.loads(urlsafe_b64decode(payload_b64))
+                email = profile.get("email", "")
+                name = profile.get("name", email.split("@")[0])
+                username = auth.create_from_google(email, name)
+                token = auth.make_token(username)
+                return self._send(302, b"", "text/plain",
+                                  [("Location", "/"), *self._cookie_header(token)])
+            except Exception:
+                return self._redirect("/login")
+
         if route in _STATIC:
             name, ctype = _STATIC[route]
             return self._file(name, ctype)
@@ -249,15 +304,45 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         route = urlparse(self.path).path
 
+        if route == "/api/signup":
+            try:
+                d = self._read_json()
+            except Exception:
+                return self._json(400, {"ok": False, "error": "bad request"})
+            name = (d.get("name") or "").strip()
+            email = (d.get("email") or "").strip().lower()
+            password = d.get("password") or ""
+            if not name or not email or not password:
+                return self._json(400, {"ok": False, "error": "Name, email and password are required."})
+            if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+                return self._json(400, {"ok": False, "error": "Enter a valid email address."})
+            if len(password) < 6:
+                return self._json(400, {"ok": False, "error": "Password must be at least 6 characters."})
+            if auth.find_by_email(email):
+                return self._json(409, {"ok": False, "error": "An account with this email already exists. Try signing in."})
+            username = email.split("@")[0]
+            base = username
+            counter = 1
+            while auth.user_exists(username):
+                username = f"{base}{counter}"
+                counter += 1
+            try:
+                auth.create_operator(username, name, password, email=email)
+            except ValueError as e:
+                return self._json(409, {"ok": False, "error": str(e)})
+            token = auth.make_token(username)
+            return self._json(200, {"ok": True}, self._cookie_header(token))
+
         if route == "/api/login":
             try:
                 d = self._read_json()
             except Exception:
                 return self._json(400, {"ok": False, "error": "bad request"})
-            if auth.verify_credentials(d.get("username", ""), d.get("password", "")):
-                token = auth.make_token(d["username"])
+            username = auth.verify_credentials(d.get("username", ""), d.get("password", ""))
+            if username:
+                token = auth.make_token(username)
                 return self._json(200, {"ok": True}, self._cookie_header(token))
-            return self._json(401, {"ok": False, "error": "Wrong username or password."})
+            return self._json(401, {"ok": False, "error": "Wrong email or password."})
 
         if route == "/api/logout":
             return self._json(200, {"ok": True}, self._cookie_header("", clear=True))

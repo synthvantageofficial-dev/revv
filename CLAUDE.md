@@ -4,8 +4,15 @@
 > **"Battery Health Certificate"** देना — जैसे इंसान की blood-test report या गाड़ी का CarFax,
 > बस EV की battery के लिए। India में ये independent, हर-brand वाली कुर्सी अभी लगभग खाली है।
 
-**Status:** Idea final. Development शुरू। (तय: 2026-09-29)
+**Status:** Idea final. Development complete. Deployed. (तय: 2026-09-29)
 **Startup नाम:** **Revv** ⚡ (तय: 2026-10-02)
+
+## 🌐 Live URLs
+- **Landing page:** https://revv-ev.netlify.app (Netlify — static)
+- **Operator app:** https://revv-app.onrender.com (Render — Python, free tier)
+- **GitHub repo:** https://github.com/synthvantageofficial-dev/revv (public, auto-deploy on push)
+- **Render dashboard:** https://dashboard.render.com/web/srv-db31s6ad0e5s73er4tk0
+- Default login credentials: `app/data/DEFAULT_LOGIN.txt` (created on first run)
 
 ## 📂 Project structure / Progress
 ```
@@ -45,7 +52,7 @@ ev cars/
      status + valid_until; dashboard पर Revoke button; buyer page revoked/expired banner)
 7. ✅ Input validation + error states (ingest.validate — साफ messages; friendly 404)
 8. ✅ Data-logging pipeline (datalog.py → data/readings_log.jsonl; /api/export.csv)
-9. ⬜ (बाद में, user कहे तब) app host/deploy
+9. ✅ App deployed on Render (revv-app.onrender.com) — auto-deploy on git push
 
 ### ✅ पूरा CODE हिस्सा complete! अब सिर्फ Phase 2/3 बचा:
 - असली OBD dongle + हर-brand parsing (device.py replace)
